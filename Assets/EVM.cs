@@ -20,7 +20,7 @@ public class EVM : MonoBehaviour {
     //For calculations
     float green = 0;
     int totalPixels = 0;
-    int pulse;
+    float pulse;
     int whitePixels = 0;
 
     void Start () {
@@ -50,7 +50,8 @@ public class EVM : MonoBehaviour {
         }
 
         if (Input.GetKeyDown(KeyCode.F3)) {
-            StartCoroutine(WaitAndPrint(printHertz));
+            StartCoroutine(Evm_data_full(printHertz));
+            StartCoroutine(Evm_data_pulse(printHertz));
         }
 
         //Start calculations
@@ -176,7 +177,7 @@ public class EVM : MonoBehaviour {
         }
 
         green /= totalPixels;
-        pulse = (int)(pulseOffset * green);
+        pulse = pulseOffset * green;
         Debug.Log("Total pixels: " + totalPixels + " | White Pixels: " + whitePixels + " | Average green: " + green + " | Pulse estimate: " + pulse);
         // Calculate END -----------------------------------------------
 
@@ -186,18 +187,34 @@ public class EVM : MonoBehaviour {
             threshold += 0.1f;
     }
 
-    public void savePreset(string doc) {
-        using (StreamWriter writetext = File.AppendText(doc)) {
-            writetext.Write(Time.time.ToString() + " | Total pixels: " + totalPixels + " | White Pixels: " + whitePixels + " | Average green: " + green + " | Pulse estimate: " + pulse + Environment.NewLine);
-            writetext.Close();
+    //StreamWriting
+    public void savePreset_full(string doc) {
+        using (StreamWriter writeFull = File.AppendText(doc)) {
+            writeFull.Write(Time.time.ToString() + " | Total pixels: " + totalPixels + " | White Pixels: " + whitePixels + " | Average green: " + green + " | Pulse estimate: " + pulse + Environment.NewLine);
+            writeFull.Close();
         }
     }
 
-    private IEnumerator WaitAndPrint(float waitTime) {
+    public void savePreset_pulse(string doc) {
+        using (StreamWriter writePulse = File.AppendText(doc)) {
+            writePulse.Write(pulse + Environment.NewLine);
+            writePulse.Close();
+        }
+    }
+
+    private IEnumerator Evm_data_full(float waitTime) {
         while (true) {
             yield return new WaitForSeconds(waitTime);
-            savePreset(@"D:\myVar.txt");
-            Debug.Log("Printing");
+            savePreset_full(@"D:\evm_data_full.txt");
+            Debug.Log("Printing evm_data_full");
+        }
+    }
+
+    private IEnumerator Evm_data_pulse(float waitTime) {
+        while (true) {
+            yield return new WaitForSeconds(waitTime);
+            savePreset_pulse(@"D:\evm_data_pulse.txt");
+            Debug.Log("Printing evm_data_pulse");
         }
     }
 }
