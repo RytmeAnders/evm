@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System;
+using System.IO;
 
 public class EVM : MonoBehaviour {
 
@@ -7,13 +9,19 @@ public class EVM : MonoBehaviour {
     bool showBS = false;
 
     WebCamTexture WCT;
-    Texture2D snapshot, diffABS, diffThres, actual;
+    Texture2D snapshot, diffThres, actual;
 
     Color[] pix, pix2, pixActual;
 
     int area, xPos, yPos, xPosOld, yPosOld, y4Head, xMin, xMax, yMin, yMax;
-    public float threshold;
-    public int aoiOffset, thresholdOffset, pulseOffset;
+    public float threshold, printHertz;
+    public int roiOffset, thresholdOffset, pulseOffset;
+
+    //For calculations
+    float green = 0;
+    int totalPixels = 0;
+    int pulse;
+    int whitePixels = 0;
 
     void Start () {
 
@@ -23,12 +31,10 @@ public class EVM : MonoBehaviour {
         WCT.Play();
 
         snapshot = new Texture2D(WCT.width, WCT.height);
-        diffABS = new Texture2D(WCT.width, WCT.height);
         diffThres = new Texture2D(WCT.width, WCT.height);
         actual = new Texture2D(WCT.width, WCT.height);
 
         GameObject.Find("Snap").GetComponent<Renderer>().material.mainTexture = snapshot;
-        GameObject.Find("DiffABS").GetComponent<Renderer>().material.mainTexture = diffABS;
         GameObject.Find("DiffThres").GetComponent<Renderer>().material.mainTexture = diffThres;
         GameObject.Find("CubeActual").GetComponent<Renderer>().material.mainTexture = actual;
 
@@ -43,18 +49,15 @@ public class EVM : MonoBehaviour {
             snapshot.Apply();
         }
 
+        if (Input.GetKeyDown(KeyCode.F3)) {
+            StartCoroutine(WaitAndPrint(printHertz));
+        }
+
         //Start calculations
         if (Input.GetKeyDown(KeyCode.F2)) {
             showBS = !showBS;
         }
 
-        if (!showBS) {
-            //For the CubeActual, when there are no calculation going on, just show
-            //the webcam
-            pixActual = WCT.GetPixels();
-            actual.SetPixels(pixActual);
-            actual.Apply();
-        }
 
         if (showBS) {
             //Assign pixels to arrays
@@ -69,8 +72,8 @@ public class EVM : MonoBehaviour {
                 pix2[i].b = Mathf.Abs(pix[i].b - pix2[i].b);
             }
 
-            diffABS.SetPixels(pix2);
-            diffABS.Apply();
+            //diffABS.SetPixels(pix2);
+            //diffABS.Apply();
             // END ABSOLUTE DIFFERENCE --------------------------
 
             //
@@ -87,34 +90,29 @@ public class EVM : MonoBehaviour {
                     }
                 }
             }
-
-            //diffThres.SetPixels(pix2);
-            //diffThres.Apply();
-
-            xPosOld = xPos;
-            yPosOld = yPos;
-
-            area = 0;
-            xPos = 0;
-            yPos = 0;
-
-            for (int i = 0; i < pix.Length; i++) {
-                if (pix2[i] == Color.white) {
-                    area++;
-                    xPos += i % WCT.width;
-                    yPos += i / WCT.width;
-                }
-            }
-
-            xPos /= area;
-            yPos /= area;
         }
-        // THRESHOLD END -------------------------------------------
+        // CALCULATE CENTER OF MASS -------------------------------------------
 
-        //
+        xPosOld = xPos;
+        yPosOld = yPos;
+
+        area = 0;
+        xPos = 0;
+        yPos = 0;
+
+        for (int i = 0; i < pix.Length; i++) {
+            if (pix2[i] == Color.white) {
+                area++;
+                xPos += i % WCT.width;
+                yPos += i / WCT.width;
+            }
+        }
+
+        xPos /= area;
+        yPos /= area;
 
         // DRAWING -----------------------------------------------------
-        y4Head = yPos + aoiOffset;
+        y4Head = yPos + roiOffset;
         xMin = xPos - 50;
         xMax = xPos + 50;
         yMin = y4Head - 25;
@@ -122,22 +120,24 @@ public class EVM : MonoBehaviour {
 
         //Draw the center of mass y-line
         for (int y = 0; y < WCT.height; y++) {
-            pixActual[y * WCT.width + xPos] = Color.green;
             pix2[y * WCT.width + xPos] = Color.green;
         }
         //Draw the center of mass x-line
         for (int x = 0; x < WCT.width; x++) {
-            pixActual[y4Head * WCT.width + x] = Color.green;
             pix2[y4Head * WCT.width + x] = Color.green;
         }
 
         //Draw AOI bounding box y-line
         for (int y = 1; y < WCT.height - 1; y++) {
             for (int x = 1; x < WCT.width - 1; x++) {
-                if (x > xMin && x < xMax && y > yMin && y < yMax) {
-                    pixActual[y * WCT.width + x] = Color.green;
+                if (x > xMin && x < xMax && y == yMin)
                     pix2[y * WCT.width + x] = Color.green;
-                }
+                if (x > xMin && x < xMax && y == yMax)
+                    pix2[y * WCT.width + x] = Color.green;
+                if (y > yMin && y < yMax && x == xMin)
+                    pix2[y * WCT.width + x] = Color.green;
+                if (y > yMin && y < yMax && x == xMax)
+                    pix2[y * WCT.width + x] = Color.green;
             }
         }
 
@@ -145,9 +145,6 @@ public class EVM : MonoBehaviour {
 
         diffThres.SetPixels(pix2);
         diffThres.Apply();
-
-        actual.SetPixels(pixActual);
-        actual.Apply();
 
         // DRAWING END -------------------------------------------------
 
@@ -164,47 +161,43 @@ public class EVM : MonoBehaviour {
 
         // Calculate mean green value of the ROI -----------------------
         //For the pulse algorithm
-        float green = 0;
-        int totalPixels = 0;
-        int pulse;
+        green = 0;
+        totalPixels = 0;
+        whitePixels = 0;
 
         for (int y = yMin; y < yMax; y++) {
             for (int x = xMin; x < xMax; x++) {
                 green += pix[y * WCT.width + x].g;
                 totalPixels++;
+                if (pix2[y * WCT.width + x] == Color.white) {
+                    whitePixels++;
+                }
             }
         }
 
         green /= totalPixels;
         pulse = (int)(pulseOffset * green);
-        Debug.Log("Total pixels: " + totalPixels + " | Average green: " + green + " | Pulse estimate: " + pulse);
+        Debug.Log("Total pixels: " + totalPixels + " | White Pixels: " + whitePixels + " | Average green: " + green + " | Pulse estimate: " + pulse);
         // Calculate END -----------------------------------------------
 
         if (Input.GetKeyDown(KeyCode.F5))
             threshold -= 0.1f;
         if (Input.GetKeyDown(KeyCode.F6))
             threshold += 0.1f;
-        /*if (Input.GetKeyDown(KeyCode.F3))
-            StartCoroutine("Algorithm");
-        if (Input.GetKeyDown(KeyCode.F4))
-            StopCoroutine("Algorithm");
     }
 
-    IEnumerator Algorithm() {
-        // Calculate mean green value of the AOI -----------------------
+    public void savePreset(string doc) {
+        using (StreamWriter writetext = File.AppendText(doc)) {
+            writetext.Write(Time.time.ToString() + " | Total pixels: " + totalPixels + " | White Pixels: " + whitePixels + " | Average green: " + green + " | Pulse estimate: " + pulse + Environment.NewLine);
+            writetext.Close();
+        }
+    }
+
+    private IEnumerator WaitAndPrint(float waitTime) {
         while (true) {
-            for (int y = yMin; y < yMax; y++) {
-                for (int x = xMin; x < xMax; x++) {
-                    green += pix[y * WCT.width + x].g;
-                    totalPixels++;
-                }
-            }
-
-            green /= totalPixels;
-            pulse = (int)(pulseOffset * green);
-
-            Debug.Log("Total pixels: " + totalPixels + " | Average green: " + green + " | Pulse estimate: " + pulse);
-            yield return new WaitForSeconds(1f);
-        }*/
+            yield return new WaitForSeconds(waitTime);
+            savePreset(@"D:\myVar.txt");
+            Debug.Log("Printing");
+        }
     }
 }
