@@ -19,6 +19,7 @@ public class EVM : MonoBehaviour {
 
     //For calculations
     float green = 0;
+    float greenMinute = 0;
     int totalPixels = 0;
     float pulse;
     int whitePixels = 0;
@@ -42,6 +43,7 @@ public class EVM : MonoBehaviour {
 
     void Update() {
 
+        //-------------------- Controls
         //Take snapshot
         if (Input.GetKeyDown(KeyCode.F1)) {
             pix = WCT.GetPixels();
@@ -49,16 +51,28 @@ public class EVM : MonoBehaviour {
             snapshot.Apply();
         }
 
-        if (Input.GetKeyDown(KeyCode.F3)) {
-            StartCoroutine(Evm_data_full(printHertz));
-            StartCoroutine(Evm_data_pulse(printHertz));
-        }
-
         //Start calculations
         if (Input.GetKeyDown(KeyCode.F2)) {
             showBS = !showBS;
         }
 
+        //Start writing to files
+        if (Input.GetKeyDown(KeyCode.F3)) {
+            StartCoroutine(Evm_data_full(printHertz));
+            StartCoroutine(Evm_data_pulse(printHertz));
+        }
+
+        //Stop writing to files
+        if (Input.GetKeyDown(KeyCode.F4)) {
+            StopAllCoroutines();
+        }
+
+        //Change threshold for the Blob
+        if (Input.GetKeyDown(KeyCode.F5))
+            threshold -= 0.1f;
+        if (Input.GetKeyDown(KeyCode.F6))
+            threshold += 0.1f;
+        //-------------------- Controls End
 
         if (showBS) {
             //Assign pixels to arrays
@@ -178,19 +192,14 @@ public class EVM : MonoBehaviour {
 
         green /= totalPixels;
         pulse = pulseOffset * green;
-        Debug.Log("Total pixels: " + totalPixels + " | White Pixels: " + whitePixels + " | Average green: " + green + " | Pulse estimate: " + pulse);
+        Debug.Log("Compactness: " + whitePixels + "/" + totalPixels + ", Threshold: " + threshold + " || AvgGreen Frame: " + green + " | AvgGreen Minute: " + greenMinute + " | Pulse: " + pulse);
         // Calculate END -----------------------------------------------
-
-        if (Input.GetKeyDown(KeyCode.F5))
-            threshold -= 0.1f;
-        if (Input.GetKeyDown(KeyCode.F6))
-            threshold += 0.1f;
     }
 
     //StreamWriting
     public void savePreset_full(string doc) {
         using (StreamWriter writeFull = File.AppendText(doc)) {
-            writeFull.Write(Time.time.ToString() + " | Total pixels: " + totalPixels + " | White Pixels: " + whitePixels + " | Average green: " + green + " | Pulse estimate: " + pulse + Environment.NewLine);
+            writeFull.Write(Time.time.ToString() + " | Compactness: " + whitePixels + "/" + totalPixels + ", Threshold: " + threshold + " || AvgGreen Frame: " + green + " | AvgGreen Minute: " + greenMinute + " | Pulse: " + pulse + Environment.NewLine);
             writeFull.Close();
         }
     }
