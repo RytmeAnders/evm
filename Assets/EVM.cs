@@ -214,7 +214,7 @@ public class EVM : MonoBehaviour {
     private IEnumerator Evm_data_full(float waitTime) {
         while (true) {
             yield return new WaitForSeconds(waitTime);
-            savePreset_full(@"D:\evm_data_full.txt");
+            savePreset_full(@"C:\evm_data_full.txt");
             Debug.Log("Printing evm_data_full");
         }
     }
@@ -222,7 +222,7 @@ public class EVM : MonoBehaviour {
     private IEnumerator Evm_data_pulse(float waitTime) {
         while (true) {
             yield return new WaitForSeconds(waitTime);
-            savePreset_pulse(@"D:\evm_data_pulse.txt");
+            savePreset_pulse(@"C:\evm_data_pulse.txt");
             Debug.Log("Printing evm_data_pulse");
         }
     }
