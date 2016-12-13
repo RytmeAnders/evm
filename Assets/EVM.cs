@@ -19,7 +19,6 @@ public class EVM : MonoBehaviour {
 
     //For calculations
     float green = 0;
-    float greenMinute = 0;
     int totalPixels = 0;
     float pulse;
     int whitePixels = 0;
@@ -60,6 +59,7 @@ public class EVM : MonoBehaviour {
         if (Input.GetKeyDown(KeyCode.F3)) {
             StartCoroutine(Evm_data_full(printHertz));
             StartCoroutine(Evm_data_pulse(printHertz));
+            StartCoroutine(Evm_data_graph(printHertz));
         }
 
         //Stop writing to files
@@ -192,28 +192,37 @@ public class EVM : MonoBehaviour {
 
         green /= totalPixels;
         pulse = pulseOffset * green;
-        Debug.Log("Compactness: " + whitePixels + "/" + totalPixels + ", Threshold: " + threshold + " || AvgGreen Frame: " + green + " | AvgGreen Minute: " + greenMinute + " | Pulse: " + pulse);
+        Debug.Log(Time.time.ToString() + " | Compactness: " + whitePixels + "/" + totalPixels + ", Threshold: " + threshold + " || AvgGreen Frame: " + green + " | Pulse: " + pulse);
         // Calculate END -----------------------------------------------
     }
 
     //StreamWriting
     public void savePreset_full(string doc) {
         using (StreamWriter writeFull = File.AppendText(doc)) {
-            writeFull.Write(Time.time.ToString() + " | Compactness: " + whitePixels + "/" + totalPixels + ", Threshold: " + threshold + " || AvgGreen Frame: " + green + " | AvgGreen Minute: " + greenMinute + " | Pulse: " + pulse + Environment.NewLine);
+            writeFull.Write(Time.time.ToString() + " | Compactness: " + whitePixels + "/" + totalPixels + ", Threshold: " + threshold + " || AvgGreen Frame: " + green + " | Pulse: " + pulse + Environment.NewLine);
             writeFull.Close();
         }
     }
 
     public void savePreset_pulse(string doc) {
-        using (StreamWriter writePulse = File.AppendText(doc)) {
+        using (StreamWriter writePulse = new StreamWriter(doc)) {
             writePulse.Write(pulse + Environment.NewLine);
             writePulse.Close();
         }
     }
 
+    public void savePreset_graph(string doc) {
+        using (StreamWriter writeGraph = File.AppendText(doc))
+        {
+            writeGraph.Write(pulse + Environment.NewLine);
+            writeGraph.Close();
+        }
+    }
+
     private IEnumerator Evm_data_full(float waitTime) {
-        while (true) {
-            yield return new WaitForSeconds(waitTime);
+        while (true)
+        {
+            yield return new WaitForSeconds(waitTime/2);
             savePreset_full(@"D:\evm_data_full.txt");
             Debug.Log("Printing evm_data_full");
         }
@@ -224,6 +233,14 @@ public class EVM : MonoBehaviour {
             yield return new WaitForSeconds(waitTime);
             savePreset_pulse(@"D:\evm_data_pulse.txt");
             Debug.Log("Printing evm_data_pulse");
+        }
+    }
+
+    private IEnumerator Evm_data_graph(float waitTime) {
+        while (true) {
+            yield return new WaitForSeconds(0.015625f);
+            savePreset_graph(@"D:\evm_data_graph.txt");
+            Debug.Log("Printing evm_data_graph");
         }
     }
 }

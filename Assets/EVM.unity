@@ -121,7 +121,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   threshold: 0.5
-  printHertz: 0.5
+  printHertz: 1
   roiOffset: 0
   thresholdOffset: 180
   pulseOffset: 180
